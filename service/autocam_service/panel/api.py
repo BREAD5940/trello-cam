@@ -349,12 +349,19 @@ class PanelApp:
     def _machine_key_ok(self, given: str) -> bool:
         return bool(given) and hmac.compare_digest(given.encode("utf-8"), self._machine_key)
 
+    PRACTICE_BAR = b'<div class="practice-bar" role="status">Practice mode: nothing you do here is kept</div>'
+
+    def _html(self, name: str) -> bytes:
+        """A page; in practice mode with a bar across its top saying so."""
+        html = versioned_page(name)
+        return html.replace(b"<body>", b"<body>" + self.PRACTICE_BAR, 1) if self.cfg.practice else html
+
     # ---- the machine page (machine.py)
     def _machine_page(self, query: Dict[str, str]) -> Response:
         out = {"Content-Security-Policy": CSP, "Referrer-Policy": "no-referrer", "Cache-Control": "no-store",
                "X-Content-Type-Options": "nosniff"}
         if self._machine_key_ok(query.get("key", "")):
-            return Response(200, versioned_page("machine.html"), "text/html; charset=utf-8", out)
+            return Response(200, self._html("machine.html"), "text/html; charset=utf-8", out)
         return Response(403, b"This isn't AutoCAM's machine link (the key is wrong). Ask a mentor.",
                         "text/plain; charset=utf-8", out)
 
@@ -408,12 +415,12 @@ class PanelApp:
                "X-Content-Type-Options": "nosniff"}
         if shop and (self._session(headers) is not None
                      or (self._shop_key_ok(query.get("key", "")) and self._old_link_open())):
-            return Response(200, versioned_page("shop.html"), "text/html; charset=utf-8", out)
+            return Response(200, self._html("shop.html"), "text/html; charset=utf-8", out)
         if shop and self.signin is not None and self.signin.ready:
             note = "That link doesn't open the shop any more. Sign in instead." if query.get("key") else ""
             return Response(200, signin_page(note), "text/html; charset=utf-8", out)
         if not shop and self._key_ok(query.get("key", "")):
-            return Response(200, versioned_page("index.html"), "text/html; charset=utf-8", out)
+            return Response(200, self._html("index.html"), "text/html; charset=utf-8", out)
         return Response(403, b"This isn't AutoCAM's " + (b"shop" if shop else b"panel") +
                         b" link (the key is wrong). Ask a mentor.", "text/plain; charset=utf-8", out)
 
@@ -1602,7 +1609,9 @@ class PanelApp:
                 raise Refused(400, "Pick the part's material." if not have else
                               f"Onshape says {have['onshape']}, which AutoCAM doesn't cut. Pick the material.")
             smoked = chosen["smoked"]
-            if wvm == "w":
+            if self.cfg.practice:                         # practice mode writes nothing to Onshape
+                why = "practice mode doesn't change Onshape"
+            elif wvm == "w":
                 set_in_onshape, why = self.onshape.set_material(did, wvmid, eid, pid, chosen["onshape"])
             else:
                 why = "this is a version, which can't be changed"

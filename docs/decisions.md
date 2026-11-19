@@ -1130,6 +1130,18 @@ Only Trello reads got more frequent; Onshape calls don't go up.
   p0209 (to about 39 in) would have been left off #4's record (fixed by hand to 39.5 in before Part 28 was nested).
   The sheet's `bands` (what another piece of stock must have clear to take the same program) include it too.
 
+## 2026-11-18: practice mode (the user: a mode for a live demo where "nothing will actually populate forever")
+
+- **A practice Trello board, not a fake one:** teaching the workflow includes the Trello review step, so practice runs
+  the real service on a real second board (made with `trello-setup --create` in the real board's workspace), with its
+  own records (`state-practice/`) and logs. Nothing on the real board or in the real records changes.
+- **Fusion and the queue are shared** (one add-in watches one queue), so practice's runs are "p" runs: a later real run
+  can never land in a practice job's folder. The real service is stopped while practice runs (one port, one tunnel).
+- **Nothing written to Onshape** in practice: the panel's material write is skipped (the card carries the material) and
+  no webhooks are made (they'd outlive practice, and the real service wouldn't know them).
+- **Switched by `ops\practice.ps1 on/off`**: a task of its own for practice, never started by itself, so a reboot is
+  always the real mode. `practice-done` carries back only who's who and the Onshape call count.
+
 ## 2026-11-09: small round holes (the user: "it seems to still miss a lot of holes", on the poly photo)
 
 - **What was missed** on the poly photo: its small holes (a 12-hole grid, pairs, 1/4-1 in round holes) and the ends of

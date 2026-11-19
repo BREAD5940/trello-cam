@@ -89,7 +89,9 @@ def build_services(cfg: Config, *, env_file: Optional[Path], dry_run: bool, offl
         return Exporter(client, OnshapeCache(cfg.paths.cache), polls)
 
     # A dry run keeps its own run state and "d" run ids: it never touches a real run, and vice versa.
-    store = RunStore(cfg.paths.state / "dryrun", prefix="d") if dry_run else RunStore(cfg.paths.state)
+    # Practice mode's runs are "p": their job folders never share a name with a real run's (they share the queue).
+    store = RunStore(cfg.paths.state / "dryrun", prefix="d") if dry_run else \
+        RunStore(cfg.paths.state, prefix="p" if cfg.practice else "r")
     return Services(cfg, tracker, Queue(cfg.paths.queue).ensure(), store, ledger, exporter_for)
 
 
@@ -126,7 +128,9 @@ def start_panel(cfg: Config, env_file: Optional[Path], services: Services) -> bo
     board = PanelBoard(tracker, cfg, services.store)
     secret = "" if creds.missing("webhook") else creds.get("AUTOCAM_WEBHOOK_SECRET")
     inbox = hooks = None
-    if p.webhooks and secret and p.public_url and not creds.missing("onshape"):
+    if cfg.practice:                      # practice mode registers nothing in Onshape (its webhooks would outlive it)
+        log.info("panel: practice mode: no Onshape webhooks")
+    elif p.webhooks and secret and p.public_url and not creds.missing("onshape"):
         inbox = ChangeInbox(cfg.paths.state / "panel_changes.json")
         hooks = WebhookSetup(onshape, p.public_url, secret, cfg.paths.state / "panel_webhook.json")
     elif p.webhooks:
@@ -231,7 +235,9 @@ def run_forever(runner: Runner, interval_s: float, code: Optional[CodeWatch] = N
     """Tick every interval_s and update the System card's status. Returns EXIT_RESTART when `code` says new
     code or config is ready to run."""
     disable_quick_edit()
-    log.info("service started; polling every %s s", interval_s)
+    log.info("service started%s; polling every %s s",
+             " in PRACTICE MODE (the practice board, state-practice/)"
+             if getattr(getattr(runner, "cfg", None), "practice", False) else "", interval_s)
     last_error: Optional[Tuple[datetime, str]] = None
     while True:
         try:

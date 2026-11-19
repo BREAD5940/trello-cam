@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import re
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Dict, List, Mapping, Optional, Tuple
@@ -466,6 +466,7 @@ class Config:
     prints: Prints = Prints()
     offcut_photos_enabled: bool = True     # [offcut_photos] enabled: the shop's Offcuts tab (offcut_photos.py)
     offcut_photos_keep: int = 500          # [offcut_photos] keep: saved photos kept to tune the finding (0 = none)
+    practice: bool = False                 # practice mode (practice_config): a practice board and throwaway records
 
     def stock_types(self) -> List[Tuple[Material, float]]:
         return [(m, t) for m in self.materials.values() for t in m.thicknesses_in]
@@ -635,6 +636,46 @@ class _Table:
 
 
 # ---------------------------------------------------------------- parsing
+
+PRACTICE_FILE = "practice.toml"           # beside the config: the practice board's IDs
+PRACTICE_STATE = "state-practice"         # the practice records, started fresh each time (`practice-reset`)
+
+
+def practice_config(cfg: Config, path: Optional[Path] = None) -> Config:
+    """Practice mode (2026-11-18, for showing people how to use AutoCAM live; docs/practice.md): the same service and
+    pages on a practice Trello board (config/practice.toml: [trello] board_id, [trello.lists], [trello.cards]), with
+    its own records (state-practice/), its own logs, "p" run ids so its jobs never share a folder with a real run's,
+    and nothing written to Onshape. Refused if the practice board, or any of its lists, is the real one."""
+    path = Path(path) if path is not None else (cfg.path.parent if cfg.path else cfg.root / "config") / PRACTICE_FILE
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except OSError as e:
+        raise ConfigError([f"practice: cannot read {path}: {e}"]) from e
+    except tomllib.TOMLDecodeError as e:
+        raise ConfigError([f"practice: {path}: not valid TOML: {e}"]) from e
+    t = data.get("trello") if isinstance(data.get("trello"), dict) else {}
+    board = str(t.get("board_id") or "")
+    lists = t.get("lists") if isinstance(t.get("lists"), dict) else {}
+    cards = t.get("cards") if isinstance(t.get("cards"), dict) else {}
+    errors = []
+    if not TRELLO_ID_RE.match(board):
+        errors.append("practice: [trello] board_id must be the practice board's 24-character ID")
+    elif board == cfg.trello.board_id:
+        errors.append("practice: the practice board is the real board")
+    for key in cfg.trello.lists:
+        if not TRELLO_ID_RE.match(str(lists.get(key) or "")):
+            errors.append(f"practice: [trello.lists] {key} is missing")
+    real = set(cfg.trello.lists.values()) | set(cfg.trello.cards.values())
+    if real & {str(v) for v in [*lists.values(), *cards.values()]}:
+        errors.append("practice: a practice list or card is one of the real board's")
+    if errors:
+        raise ConfigError(errors)
+    trello = replace(cfg.trello, board_id=board,
+                     lists=MappingProxyType({k: str(lists[k]) for k in cfg.trello.lists}),
+                     cards=MappingProxyType({k: str(cards.get(k) or "") for k in cfg.trello.cards}))
+    paths = replace(cfg.paths, state=cfg.root / PRACTICE_STATE, logs=cfg.paths.logs / "practice")
+    return replace(cfg, trello=trello, paths=paths, practice=True)
+
 
 def load_config(path: Optional[Path] = None) -> Config:
     path = Path(path) if path is not None else DEFAULT_CONFIG

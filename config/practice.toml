@@ -1,0 +1,20 @@
+# Practice mode's Trello board (docs/practice.md; `autocam run --practice`, ops\practice.ps1 on/off). Made by
+# `autocam trello-setup --create "5940 AutoCAM practice"` in the real board's workspace, 2026-11-18. IDs aren't secrets.
+# Everything else comes from autocam.toml; practice keeps its records in state-practice/ and never touches the real board.
+
+[trello]
+board_id = "6afe52ec757a407bbb92d850"   # https://trello.com/b/5KYqzX7N/5940-autocam-practice
+
+[trello.lists]
+inbox = "6afe52ed508f465d354f2b07"
+ready_for_cam = "6afe52ee7ddb997d97a0b9ba"
+needs_fixing = "6afe52eeaa587b9a7c87cc84"
+nested = "6afe52ef6dcd7fe476c61a09"
+sheet_review = "6afe52f0992dd2a581596aa1"
+ready_to_cut = "6afe52f0243fe16cc53fbc50"
+cut = "6afe52f1ccb5542a877185a1"
+offcuts = "6afe52f27d4e1c9872e00807"
+control = "6afe52f3c161f51e97cd65a1"
+
+[trello.cards]
+system = "6afe52f44e868185753da4fd"

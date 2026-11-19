@@ -192,3 +192,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .group-head .group-label { padding-bottom: 0; }
 .arow.spare { grid-template-columns: minmax(0, 1fr) auto; cursor: default; padding-block: 4px; }
 .hint.bad-text { color: var(--on-error-container); }
+
+/* Practice mode (docs/practice.md): a bar across the top of every page */
+.practice-bar { background: #3f2a73; color: #fff; text-align: center; font: 600 13px/1.4 "Hanken Grotesk", system-ui, sans-serif; padding: 6px 12px; letter-spacing: 0.01em; }

@@ -15,6 +15,10 @@
     machine-link      a page with the machine screen's link, to open on the ShopSabre's PC and bookmark
     shop-sign-out     end the shop page's Slack sign-ins: one person's (by name) or everyone's (--all)
     offcut-photo-report  how well the offcut photo finding did on the photos saved on the shop page (photo_report.py)
+    practice-reset    practice mode: archive every card on the practice board, start its records fresh
+    practice-done     practice mode over: the names, Slack sign-ins and Onshape call count it gathered go back
+
+  run --practice     the service in practice mode (docs/practice.md): the practice board, throwaway records
 """
 
 import argparse
@@ -27,7 +31,7 @@ from typing import List, Optional
 
 from autocam_core import CORE_VERSION
 
-from .config import DEFAULT_CONFIG, TRELLO_LISTS, ConfigError, load_config
+from .config import DEFAULT_CONFIG, TRELLO_LISTS, ConfigError, load_config, practice_config
 from .credentials import ALL_KEYS, CredentialsError, load_credentials
 
 
@@ -42,6 +46,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         p = sub.add_parser(name, help=help_text)
         p.add_argument("--offline", action="store_true", help="no Onshape calls (cache and .step attachments only)")
         p.add_argument("--verbose", action="store_true")
+        p.add_argument("--practice", action="store_true", help="practice mode: the practice board, throwaway records")
         if name == "tick":
             p.add_argument("--now", action="store_true", help="start a run for waiting cards without the usual delay")
         if name == "run":
@@ -72,6 +77,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     so.add_argument("name", nargs="?", default="", help="the name the shop knows them by")
     so.add_argument("--all", action="store_true", help="everyone")
     sub.add_parser("offcut-photo-report", help="how well the offcut photo finding did on the photos saved on the shop page")
+    sub.add_parser("practice-reset", help="practice mode: archive the practice board's cards, start its records fresh")
+    sub.add_parser("practice-done", help="practice mode over: names, sign-ins and the Onshape call count go back")
     argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
 
@@ -85,6 +92,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"Config INVALID: {args.config}\n" + "\n".join(f"  - {x}" for x in e.errors))
         return 1
     env_file = args.env_file or cfg.root / ".env"
+    if getattr(args, "practice", False):
+        try:
+            cfg = practice_config(cfg)
+        except ConfigError as e:
+            print("Practice mode can't start:\n" + "\n".join(f"  - {x}" for x in e.errors))
+            return 1
     try:
         if args.command == "run" and not args.child:
             from .restart import AlreadyRunning, SingleInstance, supervise
@@ -117,6 +130,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             return machine_link(cfg, env_file, args.out)
         if args.command == "shop-sign-out":
             return shop_sign_out(cfg, args.name, args.all)
+        if args.command == "practice-reset":
+            return practice_reset(cfg, env_file)
+        if args.command == "practice-done":
+            return practice_done(cfg)
         if args.command == "offcut-photo-report":
             from .photo_report import report
             print(report(cfg.paths.state / "offcut_photos" / "kept"))
@@ -125,6 +142,70 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"Credentials: {e}")
         return 1
     return 2
+
+
+# what practice mode carries from the real records, and back when it's over: who's who (names, Slack sign-ins, names
+# typed in the panel), the Onshape call count (the real service is stopped meanwhile, so practice's copy is the newer),
+# and the tunnel's process (so practice uses the running tunnel, not a second one)
+PRACTICE_CARRY = ("people.json", "shop_sessions.json", "panel_users.json", "onshape_ledger.jsonl", "panel_tunnel.pid")
+
+
+def practice_reset(cfg, env_file: Path) -> int:
+    """Practice from a clean start: every card on the practice board archived (not its control list, the System card,
+    nor the "How to add a part" and "New part" cards trello-setup made), and its records (state-practice/) made again with only PRACTICE_CARRY copied from the real ones."""
+    import shutil
+    try:
+        pcfg = practice_config(cfg)
+    except ConfigError as e:
+        print("Practice mode isn't set up:\n" + "\n".join(f"  - {x}" for x in e.errors))
+        return 1
+    from .app import trello_tracker
+    from .trello_setup import README_TITLE, TEMPLATE_TITLE
+    tracker = trello_tracker(pcfg, env_file)
+    keep = set(pcfg.trello.cards.values())
+    archived = 0
+    for key in pcfg.trello.lists:
+        if key == "control":
+            continue
+        for card in tracker.list_cards(key):
+            if card.id not in keep and card.name not in (README_TITLE, TEMPLATE_TITLE):   # the board's own cards stay
+                tracker.archive(card.id)
+                archived += 1
+    state = pcfg.paths.state
+    if state.resolve() == cfg.paths.state.resolve():
+        print("Refused: the practice records are the real ones.")
+        return 1
+    shutil.rmtree(state, ignore_errors=True)
+    state.mkdir(parents=True, exist_ok=True)
+    for name in PRACTICE_CARRY:
+        if (cfg.paths.state / name).is_file():
+            shutil.copy2(cfg.paths.state / name, state / name)
+    print(f"Practice board: {archived} card{'s' if archived != 1 else ''} archived. Practice records started fresh "
+          f"in {state}.")
+    return 0
+
+
+def practice_done(cfg) -> int:
+    """After practice (its service stopped): PRACTICE_CARRY goes back to the real records, and practice's jobs that
+    Fusion hasn't started are taken off the queue (its finished ones stay in queue/done, as "p" runs, never a real
+    run's name)."""
+    import shutil
+    try:
+        pcfg = practice_config(cfg)
+    except ConfigError as e:
+        print("Practice mode isn't set up:\n" + "\n".join(f"  - {x}" for x in e.errors))
+        return 1
+    back = []
+    for name in PRACTICE_CARRY:
+        if (pcfg.paths.state / name).is_file():
+            shutil.copy2(pcfg.paths.state / name, cfg.paths.state / name)
+            back.append(name)
+    dropped = 0
+    for job in (cfg.paths.queue / "incoming").glob("p*.json"):
+        job.unlink()
+        dropped += 1
+    print(f"Back to the real records: {', '.join(back) or 'nothing'}. Practice jobs taken off the queue: {dropped}.")
+    return 0
 
 
 def shop_sign_out(cfg, name: str, everyone: bool) -> int:

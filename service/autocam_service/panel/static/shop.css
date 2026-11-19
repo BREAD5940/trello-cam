@@ -323,3 +323,6 @@ body.cam-open { overflow: hidden; }
 .flat .shape { fill: var(--used-fill); stroke: var(--used-line); stroke-width: 2; stroke-linejoin: round; pointer-events: all; cursor: move; }
 .flat .shape.sel { stroke: var(--primary-container); }
 .box.frame { background: transparent; border-style: dashed; box-shadow: none; }
+
+/* Practice mode (docs/practice.md): a bar across the top of every page */
+.practice-bar { background: #3f2a73; color: #fff; text-align: center; font: 600 13px/1.4 "Hanken Grotesk", system-ui, sans-serif; padding: 6px 12px; letter-spacing: 0.01em; }
