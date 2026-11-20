@@ -1,5 +1,9 @@
 # frc-autocam
 
+> **Moved (2026-11-19).** AutoCAM now lives in [BREAD5940/bread-server](https://github.com/BREAD5940/bread-server)
+> under `apps/autocam`, with this repo's history. Its service runs on the team server and Fusion's add-in on the
+> laptop; pushing bread-server `main` deploys both. This repo is archived and read-only; make changes there.
+
 Trello cards with Onshape part links → nested, CAM'd sheets in Fusion → WinCNC `.tap` files back on Trello
 for the team's ShopSabre 23. A human reviews every sheet before it is cut.
 
