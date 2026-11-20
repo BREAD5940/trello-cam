@@ -350,8 +350,8 @@ post_sha256 = "9bfcc6beb01b5123fc86495ce1907b7de72cccd5167638ca568591129de9741f"
 tool_library = "fusion/tools/5940_Tool_Library.tools"
 job_timeout_s = 1800
 max_attempts = 2
-remote = ""                     # the shop PC's add-in: "" = the local hot folder (service on this PC); a URL
-                                # (https://autocam.team5940.org) = the team server's job API (worker_api.py)
+remote = "https://autocam.team5940.org"   # the add-in gets jobs from the team server's job API (worker_api.py)
+                                # since 2026-11-19; "" = the local hot folder, with the service on the same PC
 
 [fusion.post_properties]        # every post property, set explicitly on every post; useMist comes from the material
 showSequenceNumbers = "false"
@@ -466,8 +466,8 @@ enabled = true
 port = 8790                     # served on 127.0.0.1 only; the tunnel below makes it public_url. Not 8770: the
                                 # LoRa range tester's walk page uses 8770-8772 on this laptop (moved 2026-11-02)
 public_url = "https://autocam.team5940.org"
-tunnel_dir = "C:/dev/autocam-tunnel"   # cloudflared.exe + config.yml + the tunnel's credentials (not in the repo);
-                                # the service starts the tunnel and keeps it running ("" = it doesn't)
+tunnel_dir = ""                 # "" = the service starts no tunnel: the team server's own tunnel serves public_url
+                                # (until 2026-11-19: C:/dev/autocam-tunnel, cloudflared.exe + its config and credentials)
 onshape_calls_per_day = 200     # 200 for the day ending 4 PM 2026-11-20 (the user; the team used all 120 by 4:28 PM), then back to 120. (60 until 2026-11-01) the panel's own Onshape calls (parts lists, assembly counts, part checks, materials),
 onshape_calls_per_year = 1500   # counted apart from runs' yearly_cap_calls; both are shares of the enterprise's 10,000
 parts_cache_s = 600             # a Part Studio's parts list is read again after this long (or on Refresh)
