@@ -36,18 +36,20 @@ class Settings:
     queue: Path
     logs: Path
     max_attempts: int
+    remote: str = ""        # [fusion] remote: "" = the local hot folder; a URL = the team server's job API
 
 
 def load_settings(repo: Path) -> Settings:
-    """The three things the worker needs from config/autocam.toml (jobs carry everything else)."""
+    """What the worker needs from config/autocam.toml (jobs carry everything else)."""
     try:
         import tomllib
     except ImportError:  # Python < 3.11 (tests only; Fusion bundles 3.14)
         import tomli as tomllib
     data = tomllib.loads((Path(repo) / "config" / "autocam.toml").read_text(encoding="utf-8"))
     paths = data.get("paths", {})
+    fusion = data.get("fusion", {})
     return Settings(queue=Path(repo) / paths.get("queue", "queue"), logs=Path(repo) / paths.get("logs", "logs"),
-                    max_attempts=int(data.get("fusion", {}).get("max_attempts", 2)))
+                    max_attempts=int(fusion.get("max_attempts", 2)), remote=str(fusion.get("remote", "")))
 
 
 class Worker:

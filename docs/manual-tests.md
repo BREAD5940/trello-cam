@@ -686,3 +686,21 @@ After registering the extension in Onshape:
 | 6 | Send the same part again | Refused; Change qty works |
 | 7 | Open the panel from a document the team account can't see | "AutoCAM can't open this document" |
 
+
+## Remote mode: Fusion on the shop PC, the service on the team server (2026-11-19)
+
+The job API and `remote.py` are tested offline (`tests/service/test_worker_api.py`); the add-in's use of them has not
+run in Fusion yet.
+
+1. Shop PC `.env`: `AUTOCAM_WORKER_TOKEN=` the same value as the server's. `config/autocam.toml`:
+   `[fusion] remote = "https://autocam.team5940.org"`. Restart the add-in (Shift+S > Add-Ins > autocam_addin > Stop,
+   Run), or restart Fusion.
+2. `logs/fusion_worker.log` says `started: ... jobs from https://autocam.team5940.org`, with no `remote:` errors.
+3. On the server, `queue/worker_heartbeat.json` updates every 10 s with `worker_ts` set, and the System card shows
+   Fusion running.
+4. Move a part card to Ready for CAM. The log shows `remote: claimed <job>`; `cache/remote/` gets its STEP file; the
+   job runs; `remote: sent <job> (done)`; the server publishes the sheet to Trello as before.
+5. Close Fusion in the middle of a job, start it again: the job runs again (attempt 2) or lands in failed/ after
+   `max_attempts`, and the server shows the same.
+6. Stop the server's service for a minute while the PC is idle: the log shows one `remote: can't reach` line and
+   carries on when it's back.

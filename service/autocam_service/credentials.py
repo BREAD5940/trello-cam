@@ -21,6 +21,9 @@ GROUPS: Dict[str, tuple] = {
     # Sign in with Slack on the shop's phone page (panel/signin.py; optional): the Slack app's id and secret, and the
     # team's workspace id (T...; not a secret, but kept with the app's)
     "slack": ("AUTOCAM_SLACK_CLIENT_ID", "AUTOCAM_SLACK_CLIENT_SECRET", "AUTOCAM_SLACK_TEAM_ID"),
+    # the job API (panel/worker_api.py; optional): the shop PC's Fusion worker sends it when the service runs on the
+    # team server. The same value goes in the shop PC's .env.
+    "worker": ("AUTOCAM_WORKER_TOKEN",),
 }
 ALL_KEYS = tuple(k for keys in GROUPS.values() for k in keys)
 

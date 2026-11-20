@@ -115,6 +115,8 @@ MAX_PRINT_BODY = 96 * 1024 * 1024        # a STEP, STL or 3MF as base64 ([prints
 PRINT_FILE_PATH = "/api/shop/print-file"
 OFFCUT_PHOTO_PATH = "/api/shop/offcut-photo"
 MAX_PHOTO_BODY = 17 * 1024 * 1024      # a phone photo as base64 (the page shrinks it first; offcut_photos checks it)
+WORKER_PREFIX = "/api/worker/"         # the Fusion worker on the shop PC (worker_api.py), when the service is remote
+MAX_WORKER_BODY = 200 * 1024 * 1024    # a finished job's outputs as a zip (a few MB; Fusion files can be bigger)
 SELECTION_LOGS_PER_DAY = 30
 MAX_ASSEMBLY_SEND = 60
 CSP = ("default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; "
@@ -137,6 +139,8 @@ def machine_key(panel_key: str) -> str:
 
 
 def body_limit(path: str) -> int:
+    if path.startswith(WORKER_PREFIX):
+        return MAX_WORKER_BODY
     return MAX_PROGRAM_BODY if path == PROGRAM_PATH else MAX_PRINT_BODY if path == PRINT_UPLOAD_PATH \
         else MAX_PHOTO_BODY if path == OFFCUT_PHOTO_PATH else 256 * 1024 if path == "/api/shop/offcut-save" else MAX_BODY
 
@@ -242,6 +246,7 @@ class PanelApp:
             raise ValueError("the panel needs AUTOCAM_PANEL_KEY")
         self.machine = machine                # the operator's screen (machine.MachineView; None: off)
         self.offcut_photos: Any = None        # the shop's Offcuts tab (offcut_photos.OffcutPhotos; None: off)
+        self.worker: Any = None               # the job API for a remote Fusion worker (worker_api.WorkerAPI; None: off)
         self._machine_key = machine_key(key).encode("utf-8")
         self.people = people                  # who does what (people.py; None: no names, no Plates tab)
         self.signin = signin                  # Slack sign-in on the shop page (signin.py; None: the key link only)
@@ -291,6 +296,10 @@ class PanelApp:
                 return Response(404, b"Not found", "text/plain; charset=utf-8")
             if path.startswith(HOOK_PREFIX):                 # Onshape's webhook: its address is its password
                 return self.hook(method, path, body)
+            if path.startswith(WORKER_PREFIX):               # the shop PC's Fusion worker: its own token
+                if self.worker is None:
+                    return _json(404, {"error": "Not found"})
+                return self.worker.handle(method, path, headers, body)
             given = query.get("key", "") if path in ("/api/preview", PRINT_FILE_PATH) and query.get("key") \
                 else headers.get("x-autocam-key", "")
             if (path == "/api/machine" or path.startswith("/api/machine/")) and self.machine is not None:

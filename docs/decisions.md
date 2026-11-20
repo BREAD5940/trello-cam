@@ -1814,3 +1814,28 @@ board of sheets from five documents costs about ten of the panel's 60 calls a da
   is on the part clear of holes, edges and every bend zone. No room, or two bends of the same size going opposite
   ways (which strip is which can't be told): no letter, a CHECK line, and the bend list still says.
 
+
+## 2026-11-19: the service moves to the team server; Fusion stays on the shop PC (the user's choice)
+
+The team got a server (23.238.22.74, BREAD5940/bread-server, Vasista's rules: one sign-in, one shared database, one
+repo). The service, Trello, Onshape and the panel, shop and machine pages move there; Fusion can only run on Windows,
+so the add-in stays on the shop PC and reaches the queue over HTTPS.
+
+- **The server keeps the hot folder** as the record of every job, so the runner, results, pictures and the machine
+  screen read it as before. `panel/worker_api.py` stands in for the worker's side of it under `/api/worker/`
+  (heartbeat, recover, claim, file, done, failed), on the panel's server and tunnel, with its own token
+  (`AUTOCAM_WORKER_TOKEN` in both .env files). The heartbeat is stored with the server's clock, so health.py's
+  "Fusion down" still compares one clock.
+- **The add-in is unchanged apart from one call.** With `[fusion] remote` set, `autocam_worker/remote.py` runs on
+  its background thread (never Fusion's main thread): it uploads finished and failed jobs as one zip each (marked
+  `.uploaded` here), sends the heartbeat, and when nothing is waiting or running claims the next job, downloads its
+  STEP files into `cache/remote/` by sha256, and points the job's paths at this PC (its STEP files, and the
+  templates and post in this checkout) before putting it in the local `incoming/`. The worker and pipeline run it
+  exactly as before; the local queue is now a spool that survives a Fusion crash.
+- **Recovery:** the first sync tells the server which jobs the PC still holds; claimed jobs it doesn't hold go back
+  in the server's queue (or to failed/ after `max_attempts`), like `Queue.recover` at worker start.
+- Uploads are unpacked safely (no absolute paths, `..`, drive letters or symlinks; 400 MB cap); STEP files are only
+  served for jobs that are claimed. `remote = ""` (the default) keeps the local hot folder, so nothing changes until
+  the cutover.
+- **Deploys:** the server and the shop PC must stay on the same CORE_VERSION (the pipeline refuses a mismatch), so a
+  core change is deployed to both together.

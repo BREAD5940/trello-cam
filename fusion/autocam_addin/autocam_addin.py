@@ -1,4 +1,7 @@
 """autocam_addin: the Fusion end of the hot folder (M2). UNTESTED IN FUSION.
+In remote mode ([fusion] remote = the team server's address) the background thread also runs
+autocam_worker/remote.py, which brings jobs from the server's job API into the local hot folder and sends results
+back (2026-11-19, the service moved to the team server; remote mode is untested in Fusion).
 
 While the add-in runs, a background thread wakes every POLL_S seconds, updates queue/worker_heartbeat.json and,
 when a job is waiting, fires a custom event. The event handler runs on Fusion's main thread (the only thread
@@ -31,6 +34,7 @@ for _p in (REPO / "core", HERE):
 
 _app = None
 _worker = None
+_remote = None          # remote mode ([fusion] remote): moves jobs between the team server and the local spool
 _reload_flag = None     # queue/reload_addin
 _loaded = None          # CORE_VERSION the worker was built from
 _failed = None          # repo CORE_VERSION whose reload failed (not retried until the flag file asks again)
@@ -64,13 +68,15 @@ def _make_worker():
     from autocam_core import CORE_VERSION
     from autocam_core.hotfolder import Queue
     from autocam_worker.fx_adapter import FusionAdapter
+    from autocam_worker.remote import make_remote
     from autocam_worker.worker import Worker, load_settings
     settings = load_settings(REPO)
     queue = Queue(settings.queue).ensure()
     worker = Worker(queue, lambda job: FusionAdapter(_app, job), max_attempts=settings.max_attempts,
                     fusion_version=_app.version, log=_log.info)
+    remote = make_remote(queue, REPO, settings.remote, _log.info)
     _loaded = CORE_VERSION
-    return worker, settings
+    return worker, settings, remote
 
 
 def _purge_modules() -> None:
@@ -82,13 +88,13 @@ def _purge_modules() -> None:
 def _reload() -> None:
     """Main thread, idle only: drop the autocam_* modules and build the worker from the current code.
     If the new code doesn't load, the old worker keeps running (it holds its own module objects)."""
-    global _worker, _failed
+    global _worker, _remote, _failed
     old = _loaded
     if _reload_flag is not None and _reload_flag.exists():
         _reload_flag.unlink()
     _purge_modules()
     try:
-        _worker, _ = _make_worker()
+        _worker, _, _remote = _make_worker()
     except Exception:  # noqa: BLE001
         _failed = _repo_core_version()
         _log.error("reload failed, still running core %s:\n%s", old, traceback.format_exc())
@@ -113,6 +119,8 @@ def _poll():
     while not _stop.wait(POLL_S):
         try:
             _worker.heartbeat()
+            if _remote is not None:
+                _remote.sync()      # remote mode: send results and the heartbeat, claim the next job (never raises)
             if _worker.wants_tick() or _wants_reload():
                 _app.fireCustomEvent(EVENT_ID, "")
         except Exception:  # noqa: BLE001
@@ -130,10 +138,10 @@ def _setup_log(folder: Path) -> None:
 
 
 def run(context):
-    global _app, _worker, _stop, _thread, _reload_flag
+    global _app, _worker, _remote, _stop, _thread, _reload_flag
     _app = adsk.core.Application.get()
     try:
-        _worker, settings = _make_worker()
+        _worker, settings, _remote = _make_worker()
         _setup_log(settings.logs)
         _reload_flag = settings.queue / "reload_addin"
         if _reload_flag.exists():
@@ -146,7 +154,8 @@ def run(context):
         _stop = threading.Event()
         _thread = threading.Thread(target=_poll, name="autocam_poll", daemon=True)
         _thread.start()
-        _log.info("started: queue %s, Fusion %s", settings.queue, _app.version)
+        _log.info("started: queue %s, Fusion %s%s", settings.queue, _app.version,
+                  f", jobs from {settings.remote}" if _remote is not None else "")
     except Exception:  # noqa: BLE001
         msg = traceback.format_exc()
         _log.error("start failed:\n%s", msg)
@@ -167,7 +176,7 @@ def stop(context):
     except Exception:  # noqa: BLE001
         _log.error("stop failed:\n%s", traceback.format_exc())
     finally:
-        _worker = _thread = None
+        _worker = _remote = _thread = None
         for h in list(_log.handlers):
             h.close()
             _log.removeHandler(h)

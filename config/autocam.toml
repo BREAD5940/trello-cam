@@ -350,6 +350,8 @@ post_sha256 = "9bfcc6beb01b5123fc86495ce1907b7de72cccd5167638ca568591129de9741f"
 tool_library = "fusion/tools/5940_Tool_Library.tools"
 job_timeout_s = 1800
 max_attempts = 2
+remote = ""                     # the shop PC's add-in: "" = the local hot folder (service on this PC); a URL
+                                # (https://autocam.team5940.org) = the team server's job API (worker_api.py)
 
 [fusion.post_properties]        # every post property, set explicitly on every post; useMist comes from the material
 showSequenceNumbers = "false"

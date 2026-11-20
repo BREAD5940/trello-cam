@@ -32,7 +32,7 @@ def addin(tmp_path):
     (tmp_path / "core" / "autocam_core").mkdir(parents=True)
     module.REPO = tmp_path
     module._app = types.SimpleNamespace(version="2705.1.15")
-    module._worker, settings = module._make_worker()
+    module._worker, settings, module._remote = module._make_worker()
     module._reload_flag = settings.queue / "reload_addin"
     yield module
     fakebrep.uninstall()

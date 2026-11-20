@@ -404,6 +404,7 @@ class Fusion:
     max_attempts: int
     post_properties: Mapping[str, Any]
     params: Mapping[str, Any]      # undocumented Fusion parameter names; passed through to jobs
+    remote: str = ""               # the shop PC's add-in: "" = the local hot folder; a URL = the job API there
 
 
 @dataclass(frozen=True)
@@ -900,6 +901,7 @@ def parse_config(data: Dict[str, Any], root: Path, path: Optional[Path] = None) 
         tool_library=root / t.string("tool_library", required=True),
         job_timeout_s=t.integer("job_timeout_s", minimum=60),
         max_attempts=t.integer("max_attempts", minimum=1),
+        remote=t.string("remote", default="", pattern=re.compile(r"^(|https://[A-Za-z0-9.-]+)$")),
         post_properties=MappingProxyType(post_properties),
         params=MappingProxyType(_read_params(t.table("params"), errors)),
     )
