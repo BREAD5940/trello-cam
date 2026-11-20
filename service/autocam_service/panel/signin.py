@@ -170,10 +170,13 @@ class ShopSignIn:
     # ---- the file (reread when another process changed it: `autocam shop-sign-out`)
     def _load(self) -> Dict[str, Any]:
         with self._lock:
+            # The file's identity, not just its time: write_atomic makes a new file every save, and two saves
+            # inside one clock tick (a fast Linux server) share an mtime.
             try:
-                mtime = self.path.stat().st_mtime_ns
+                st = self.path.stat()
+                mtime = (st.st_ino, st.st_mtime_ns, st.st_size)
             except OSError:
-                mtime = 0
+                mtime = None
             if self._cache is None or mtime != self._mtime:
                 try:
                     data = json.loads(self.path.read_text(encoding="utf-8"))
@@ -193,7 +196,8 @@ class ShopSignIn:
             write_atomic(self.path, (json.dumps(data, indent=1, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8"))
             self._cache = data
             try:
-                self._mtime = self.path.stat().st_mtime_ns
+                st = self.path.stat()
+                self._mtime = (st.st_ino, st.st_mtime_ns, st.st_size)
             except OSError:
                 self._mtime = -1
 
