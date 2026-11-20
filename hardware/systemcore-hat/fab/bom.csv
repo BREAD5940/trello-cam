@@ -1,0 +1,10 @@
+Qty,References,Part,Description,LCSC,Side
+6,J1 J2 J3 J4 J5 J6,hanxia HX PM2.54-1x2P ZC H11,"Female header 1x2 2.54 mm, 11.0 mm insulator, gold",C41427517,bottom
+6,J7 J8 J9 J10 J11 J12,hanxia HX PM2.54-1x3P ZC H11,"Female header 1x3 2.54 mm, 11.0 mm insulator, gold",C41427518,bottom
+2,J13 J14,hanxia HX PM2.54-1x4P ZC H11,"Female header 1x4 2.54 mm, 11.0 mm insulator, gold",C41427519,bottom
+6,TB1 TB2 TB3 TB4 TB5 TB7,WAGO 2601-1102,"Lever PCB terminal block, 2-pole, 3.5 mm, 26-16 AWG",C7509568,top
+3,TB6 TB14 TB15,WAGO 2601-1104,"Lever PCB terminal block, 4-pole, 3.5 mm, 26-16 AWG",C7472748,top
+6,TB8 TB9 TB10 TB11 TB12 TB13,WAGO 2601-1103,"Lever PCB terminal block, 3-pole, 3.5 mm, 26-16 AWG",C7472698,top
+1,J15,BRIDGE pigtail,"Half of a Micro-Fit+ MFP-R-4_MFP-R-4_DEVICE cable, soldered",,top
+4,H1-H4,"2.0 mm spacer, M4/#8",Between SystemCore lid and hat at the 4 corner screws,,
+1,H5-H6,"Zip tie, <= 2.5 mm wide",Strain relief for the BRIDGE pigtail,,

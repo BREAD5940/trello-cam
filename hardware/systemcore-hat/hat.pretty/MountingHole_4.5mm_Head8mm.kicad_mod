@@ -1,0 +1,71 @@
+(footprint "MountingHole_4.5mm_Head8mm"
+	(version 20241229)
+	(generator "pcbnew")
+	(generator_version "9.0")
+	(layer "F.Cu")
+	(property "Reference" "REF**"
+		(at 0 0 0)
+		(layer "F.SilkS")
+		(uuid "c26750db-a48e-4292-9217-daa854c9a357")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "M4/#8 screw"
+		(at 0 0 0)
+		(layer "F.Fab")
+		(uuid "b128a6f2-eb4d-455c-b22b-5de6c7495ef8")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "288d9112-f7af-4db3-922a-755cc6e71667")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "c727475b-e33c-42ac-b60c-b3ca3848fbee")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(fp_circle
+		(center 0 0)
+		(end 4 0)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(fill no)
+		(layer "F.CrtYd")
+		(uuid "2b1a7455-83d3-4733-8cd6-e6cdcf599fe6")
+	)
+	(pad "" np_thru_hole circle
+		(at 0 0)
+		(size 4.5 4.5)
+		(drill 4.5)
+		(layers "*.Cu" "*.Mask")
+		(uuid "539edb3d-5e7d-41ad-a42f-904ad4d99b29")
+	)
+	(embedded_fonts no)
+)
